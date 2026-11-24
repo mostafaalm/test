@@ -79,9 +79,9 @@ button.ghost{background:transparent;color:var(--dn);border:1px solid var(--line)
     <div class="price" id="oz">—</div>
     <div class="sub"><span>دولار للأونصة</span><span class="chg" id="chg">—</span></div>
     <div class="k21">
-      <div><span>عيار 21 تقديري</span><b id="k21s">—</b></div>
-      <div><span>عيار 24 تقديري</span><b id="k24">—</b></div>
-      <div><span>الدولار</span><b id="fx">—</b></div>
+      <div><span>عيار 21 (دولار الصاغة)</span><b id="k21s">—</b></div>
+      <div><span>دولار الصاغة</span><b id="gfx">—</b></div>
+      <div><span>دولار البنك</span><b id="fx">—</b></div>
     </div>
     <button id="rf" type="button" style="margin-top:12px;background:#1d1a12;color:#fff">تحديث دلوقتي</button>
   </header>
@@ -109,8 +109,8 @@ button.ghost{background:transparent;color:var(--dn);border:1px solid var(--line)
     <div class="list" id="plist"></div>
   </div>
 
-  <h2>سعر الصاغة الفعلي</h2>
-  <div class="card"><p class="empty" style="margin-top:0">السعر التقديري محسوب من الأونصة والدولار، وبيفرق عن الصاغة. لو عرفت السعر الفعلي اكتبه هنا والحسابات تمشي عليه.</p><form id="kf"><label>عيار 21 شراء من الصاغة (جنيه)<input id="kv" type="number" inputmode="decimal" min="0"></label><label>&nbsp;<button type="submit">احفظ</button></label></form></div>
+  <h2>ظبط على سعر الصاغة</h2>
+  <div class="card"><p class="empty" style="margin-top:0">الدهب في مصر بيتسعّر على دولار الصاغة، وده أعلى من دولار البنك. اكتب سعر عيار 21 اللي شايفه دلوقتي (أو دولار الصاغة نفسه)، والتطبيق يحسب الفرق ويفضل يستخدمه لحد ما تحدّثه.</p><p id="prem" style="margin:0 0 10px;font-weight:600"></p><form id="kf"><label>عيار 21 دلوقتي (جنيه)<input id="kv" type="number" inputmode="decimal" min="0"></label><label>أو دولار الصاغة<input id="gv" type="number" step="0.01" inputmode="decimal" min="0"></label><button class="full" type="submit">احسب الفرق واحفظ</button></form></div>
 
   <h2>الأخبار والتحليل</h2>
   <div class="card"><p class="empty" style="margin-top:0">الأخبار وتحليلها والإشعارات بيتحدّثوا مرتين في اليوم في صفحة Claude.</p><a class="src" href="https://claude.ai/artifact/BoARqMvvjVbC2on7c5Gi8d" style="color:var(--goldd);font-weight:600">افتح صفحة الأخبار والتحليل</a></div>
@@ -130,7 +130,7 @@ const PLAN=[
  {n:4,t:'بعد اجتماع الفيدرالي',c:'بعد 9 ديسمبر، مهما كان السعر',due:m=>Date.now()>=FED}
 ];
 let M=store.get('market',{}),P=store.get('purchases',[]);
-let manual=store.get('k21manual',null);
+let premium=store.get('premium',1.79),premAt=store.get('premAt','24 نوفمبر');
 
 const cbs={};let seq=0;
 window.__cb=(id,body)=>{const f=cbs[id];delete cbs[id];if(f)f(body)};
@@ -138,8 +138,9 @@ function get(url){return new Promise(res=>{
  if(window.Native&&Native.get){const id='r'+(++seq);cbs[id]=res;Native.get(id,url);setTimeout(()=>{if(cbs[id]){delete cbs[id];res(null)}},15000)}
  else fetch(url).then(r=>r.text()).then(res,()=>res(null));
 })}
-const k21Est=()=>M.ounce&&M.fx?M.ounce/31.1035*0.875*M.fx:null;
-const k21Val=()=>manual||k21Est();
+const gfx=()=>M.fx?M.fx+premium:null;
+const k21Est=()=>M.ounce&&gfx()?M.ounce/31.1035*0.875*gfx():null;
+const k21Val=k21Est;
 
 async function refresh(){
  $('upd').textContent='بيحدّث…';
@@ -158,8 +159,8 @@ function renderMarket(){
  const c=M.open?(M.ounce-M.open)/M.open*100:null;
  $('chg').textContent=c==null?'—':(c>0?'+':'')+fmt(c,2)+'% النهارده';
  $('chg').style.background=c==null?'#1d1a12':c>=0?'var(--up)':'var(--dn)';
- $('k21s').textContent=fmt(k21Est());$('k24').textContent=fmt(M.ounce&&M.fx?M.ounce/31.1035*M.fx:null);$('fx').textContent=fmt(M.fx,2);
- if(manual)$('kv').value=manual;
+ $('k21s').textContent=fmt(k21Est());$('gfx').textContent=fmt(gfx(),2);$('fx').textContent=fmt(M.fx,2);
+ $('prem').textContent='الفرق بين الصاغة والبنك: '+fmt(premium,2)+' جنيه لكل دولار (متظبط '+premAt+')';
 }
 
 function renderRuler(){
@@ -193,7 +194,7 @@ function renderPlan(){
    else d+='الدفعة الرابعة بعد اجتماع الفيدرالي 9 ديسمبر.';
    $('nextD').textContent=d}
  }
- $('note').textContent=manual?'الحسابات ماشية على سعر الصاغة اللي إنت كتبته.':'الحسابات ماشية على سعر عيار 21 التقديري.';
+ $('note').textContent='عيار 21 محسوب بدولار الصاغة. الفرق عن البنك بيتغير، فظبّطه من وقت للتاني من تحت.';
 }
 
 function renderBuys(){
@@ -220,7 +221,11 @@ $('fd').value=new Date().toISOString().slice(0,10);
 $('f').addEventListener('submit',e=>{e.preventDefault();
  P.push({date:$('fd').value,kind:$('ft').value,grams:Number($('fg').value),price:Number($('fp').value),tranche:Number($('fn').value)});
  store.set('purchases',P);$('fg').value='';$('fp').value='';renderPlan();renderBuys()});
-$('kf').addEventListener('submit',e=>{e.preventDefault();const v=Number($('kv').value);manual=v>0?v:null;store.set('k21manual',manual);all()});
+$('kf').addEventListener('submit',e=>{e.preventDefault();const k=Number($('kv').value),g=Number($('gv').value);let G=null;
+ if(g>0)G=g;else if(k>0&&M.ounce)G=k/(M.ounce/31.1035*0.875);
+ if(G&&M.fx){premium=Math.round((G-M.fx)*100)/100;premAt=new Date().toLocaleDateString('ar-EG',{day:'numeric',month:'long'});store.set('premium',premium);store.set('premAt',premAt);$('kv').value='';$('gv').value=''}
+ else $('prem').textContent='محتاج سعر الأونصة والدولار يتحمّلوا الأول (شغّل النت ودوس تحديث).';
+ all()});
 $('rf').addEventListener('click',refresh);
 all();refresh();setInterval(refresh,60000);
 }
