@@ -41,6 +41,11 @@ public class MainActivity extends Activity {
             }
         });
         web.loadUrl("file:///android_asset/index.html");
+        if (android.os.Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 1);
+        }
+        GoldJob.schedule(this);
     }
 
     @Override
@@ -50,6 +55,16 @@ public class MainActivity extends Activity {
 
     /** Native HTTPS GET so the page is not limited by CORS. Only https URLs. */
     class Bridge {
+        @JavascriptInterface
+        public void saveProfile(String json) {
+            getSharedPreferences("alerts", MODE_PRIVATE).edit().putString("profile", json).apply();
+        }
+
+        @JavascriptInterface
+        public String climate(double price, double premium) {
+            return GoldJob.climate(MainActivity.this, price, premium).toString();
+        }
+
         @JavascriptInterface
         public void get(final String id, final String url) {
             new Thread(() -> {
