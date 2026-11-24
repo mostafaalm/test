@@ -53,7 +53,7 @@ public class GoldJob extends JobService {
     @Override
     public boolean onStartJob(final JobParameters params) {
         new Thread(() -> {
-            try { check(getApplicationContext()); } catch (Exception ignored) { }
+            try { check(getApplicationContext()); } catch (Throwable ignored) { }
             jobFinished(params, false);
         }).start();
         return true;

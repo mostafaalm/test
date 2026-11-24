@@ -23,6 +23,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        final android.content.SharedPreferences crash = getSharedPreferences("crash", MODE_PRIVATE);
+        final Thread.UncaughtExceptionHandler prev = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
+            try {
+                java.io.StringWriter sw = new java.io.StringWriter();
+                e.printStackTrace(new java.io.PrintWriter(sw));
+                crash.edit().putString("last", sw.toString()).commit();
+            } catch (Throwable ignored) { }
+            if (prev != null) prev.uncaughtException(t, e);
+        });
+
         web = new WebView(this);
         setContentView(web);
         WebSettings s = web.getSettings();
@@ -34,18 +45,28 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                 Uri u = r.getUrl();
                 if ("https".equals(u.getScheme())) {
-                    startActivity(new Intent(Intent.ACTION_VIEW, u));
+                    try { startActivity(new Intent(Intent.ACTION_VIEW, u)); } catch (Throwable ignored) { }
                     return true;
                 }
                 return false;
             }
         });
         web.loadUrl("file:///android_asset/index.html");
-        if (android.os.Build.VERSION.SDK_INT >= 33
-                && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 1);
-        }
-        GoldJob.schedule(this);
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 33
+                    && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 1);
+            }
+        } catch (Throwable e) { saveErr(e); }
+        try { GoldJob.schedule(this); } catch (Throwable e) { saveErr(e); }
+    }
+
+    void saveErr(Throwable e) {
+        try {
+            java.io.StringWriter sw = new java.io.StringWriter();
+            e.printStackTrace(new java.io.PrintWriter(sw));
+            getSharedPreferences("crash", MODE_PRIVATE).edit().putString("last", sw.toString()).apply();
+        } catch (Throwable ignored) { }
     }
 
     @Override
@@ -55,6 +76,14 @@ public class MainActivity extends Activity {
 
     /** Native HTTPS GET so the page is not limited by CORS. Only https URLs. */
     class Bridge {
+        @JavascriptInterface
+        public String lastCrash() {
+            android.content.SharedPreferences sp = getSharedPreferences("crash", MODE_PRIVATE);
+            String s = sp.getString("last", "");
+            sp.edit().remove("last").apply();
+            return s;
+        }
+
         @JavascriptInterface
         public String settings() {
             try {
@@ -83,19 +112,21 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void analyze() {
             new Thread(() -> {
-                final String r = Analyzer.run(MainActivity.this).toString();
+                String rr;
+                try { rr = Analyzer.run(MainActivity.this).toString(); } catch (Throwable e) { saveErr(e); rr = "{\"error\":\"" + e.getClass().getSimpleName() + "\"}"; }
+                final String r = rr;
                 runOnUiThread(() -> web.evaluateJavascript("window.__ai(" + JSONObject.quote(r) + ")", null));
             }).start();
         }
 
         @JavascriptInterface
         public void saveProfile(String json) {
-            getSharedPreferences("alerts", MODE_PRIVATE).edit().putString("profile", json).apply();
+            try { getSharedPreferences("alerts", MODE_PRIVATE).edit().putString("profile", json).apply(); } catch (Throwable e) { saveErr(e); }
         }
 
         @JavascriptInterface
         public String climate(double price, double premium) {
-            return GoldJob.climate(MainActivity.this, price, premium).toString();
+            try { return GoldJob.climate(MainActivity.this, price, premium).toString(); } catch (Throwable e) { saveErr(e); return "{}"; }
         }
 
         @JavascriptInterface

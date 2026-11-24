@@ -96,6 +96,8 @@ button.ghost{background:transparent;color:var(--dn);border:1px solid var(--line)
     <button id="rf" type="button" style="margin-top:12px;background:#1d1a12;color:#fff">تحديث دلوقتي</button>
   </header>
 
+  <div class="card warn" id="crashBox" style="display:none;margin-top:16px"><b>حصل عطل قبل كده. صوّر الكلام ده وابعته:</b><pre id="crashTxt" style="white-space:pre-wrap;font-size:12px;direction:ltr;text-align:left;max-height:240px;overflow:auto"></pre></div>
+
   <h2>تحليل Gemini</h2>
   <div class="card" id="aiCard">
     <span class="badge lv-neutral" id="aiV">—</span>
@@ -309,6 +311,7 @@ $('sf').addEventListener('submit',e=>{e.preventDefault();try{Native.saveSettings
 $('skc').addEventListener('click',()=>{try{Native.saveSettings('__clear__',$('sm').value,Number($('se').value))}catch(x){}loadSettings()});
 $('aiBtn').addEventListener('click',()=>{$('aiBtn').disabled=true;$('aiBtn').textContent='Gemini بيقرا الأخبار… (ممكن ياخد دقيقة)';$('aiT').textContent='';try{Native.analyze()}catch(e){window.__ai(JSON.stringify({error:'التحليل متاح في التطبيق بس'}))}});
 if(window.Native&&Native.settings)loadSettings();else $('keyState').textContent='الإعدادات متاحة في التطبيق بس.';
+try{if(window.Native&&Native.lastCrash){const c=Native.lastCrash();if(c){$('crashTxt').textContent=c.slice(0,1500);$('crashBox').style.display='block'}}}catch(e){}
 fillProfile();syncNative();loadClimate();render();refresh();setInterval(refresh,60000);
 }
 </script>
