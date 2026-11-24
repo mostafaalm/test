@@ -19,7 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
-/** Asks Claude (Messages API + web search) for a gold buy/wait verdict. */
+/** Asks Gemini (generateContent + Google Search grounding) for a gold buy/wait verdict. */
 public class Analyzer {
     static final String[] DOMAINS = {
             "kitco.com", "reuters.com", "investing.com", "fxstreet.com", "cnbc.com", "bloomberg.com",
@@ -29,7 +29,7 @@ public class Analyzer {
 
     static SharedPreferences prefs(Context c) { return c.getSharedPreferences("alerts", Context.MODE_PRIVATE); }
 
-    static boolean hasKey(Context c) { return prefs(c).getString("apiKey", "").startsWith("sk-"); }
+    static boolean hasKey(Context c) { return prefs(c).getString("apiKey", "").length() > 20; }
 
     /** Runs the analysis, stores it, returns the result JSON (or {"error":...}). Blocking: call off the UI thread. */
     static synchronized JSONObject run(Context c) {
@@ -37,50 +37,36 @@ public class Analyzer {
         JSONObject out = new JSONObject();
         try {
             String key = sp.getString("apiKey", "");
-            if (!key.startsWith("sk-")) return out.put("error", "مفيش مفتاح API. اكتبه في الإعدادات.");
-            String model = sp.getString("model", "claude-sonnet-5-5");
+            if (key.length() <= 20) return out.put("error", "مفيش مفتاح API. اكتبه في الإعدادات.");
+            String model = sp.getString("model", "gemini-3.8-flash");
 
             double p = GoldJob.fetchPrice();
             JSONObject cl = GoldJob.climate(c, p, -1);
             String profile = sp.getString("profile", "{}");
 
             JSONObject body = new JSONObject();
-            body.put("model", model);
-            body.put("max_tokens", 4000);
-            body.put("system", system());
-            JSONObject tool = new JSONObject().put("type", "web_search_20250305").put("name", "web_search").put("max_uses", 6);
-            JSONArray doms = new JSONArray();
-            for (String d : DOMAINS) doms.put(d);
-            tool.put("allowed_domains", doms);
-            body.put("tools", new JSONArray().put(tool));
-            JSONArray msgs = new JSONArray();
-            msgs.put(new JSONObject().put("role", "user").put("content", userMsg(p, cl, profile, sp.getFloat("premium", 1.79f))));
-            body.put("messages", msgs);
+            body.put("systemInstruction", new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text", system()))));
+            body.put("contents", new JSONArray().put(new JSONObject().put("role", "user")
+                    .put("parts", new JSONArray().put(new JSONObject().put("text", userMsg(p, cl, profile, sp.getFloat("premium", 1.79f)))))));
+            body.put("tools", new JSONArray().put(new JSONObject().put("google_search", new JSONObject())));
 
-            JSONObject resp = null;
-            for (int i = 0; i < 4; i++) {
-                resp = post(key, body.toString());
-                if (resp.has("error")) {
-                    String m = resp.getJSONObject("error").optString("message", "خطأ من الـAPI");
-                    return out.put("error", m);
-                }
-                if (!"pause_turn".equals(resp.optString("stop_reason"))) break;
-                msgs.put(new JSONObject().put("role", "assistant").put("content", resp.getJSONArray("content")));
+            JSONObject resp = post(key, model, body.toString());
+            if (resp.has("error")) {
+                return out.put("error", resp.getJSONObject("error").optString("message", "خطأ من Gemini"));
             }
-
+            JSONArray cands = resp.optJSONArray("candidates");
+            if (cands == null || cands.length() == 0) return out.put("error", "Gemini مرجّعش رد. جرّب تاني.");
+            JSONObject cand = cands.getJSONObject(0);
             StringBuilder text = new StringBuilder();
+            JSONObject cont = cand.optJSONObject("content");
+            JSONArray parts = cont == null ? null : cont.optJSONArray("parts");
+            for (int i = 0; parts != null && i < parts.length(); i++) text.append(parts.getJSONObject(i).optString("text"));
             Map<String, String> cites = new LinkedHashMap<>();
-            JSONArray content = resp.optJSONArray("content");
-            for (int i = 0; content != null && i < content.length(); i++) {
-                JSONObject b = content.getJSONObject(i);
-                if (!"text".equals(b.optString("type"))) continue;
-                text.append(b.optString("text"));
-                JSONArray cs = b.optJSONArray("citations");
-                for (int j = 0; cs != null && j < cs.length(); j++) {
-                    JSONObject ci = cs.getJSONObject(j);
-                    String u = ci.optString("url");
-                    if (u.startsWith("https://")) cites.put(u, ci.optString("title", u));
-                }
+            JSONObject gm = cand.optJSONObject("groundingMetadata");
+            JSONArray chunks = gm == null ? null : gm.optJSONArray("groundingChunks");
+            for (int i = 0; chunks != null && i < chunks.length(); i++) {
+                JSONObject w = chunks.getJSONObject(i).optJSONObject("web");
+                if (w != null && w.optString("uri").startsWith("https://")) cites.put(w.optString("uri"), w.optString("title", "مصدر"));
             }
             JSONObject r = extractJson(text.toString());
             if (r == null) return out.put("error", "الرد مكانش بالشكل المتوقع. جرّب تاني.");
@@ -102,7 +88,7 @@ public class Analyzer {
 
     static String system() {
         return "You are a disciplined gold-investment advisor for an individual investor in Egypt who buys physical gold "
-                + "(21k grams, gold pounds, bars) or Egyptian gold funds. Use the web_search tool to read TODAY's news and "
+                + "(21k grams, gold pounds, bars) or Egyptian gold funds. Use Google Search to read TODAY's news and "
                 + "analysis from trusted sources (Kitco, Reuters, Investing.com, FXStreet, CNBC, Bloomberg, World Gold Council, "
                 + "the Fed, Egyptian outlets for local 21k prices and the dealers' dollar). Search at least 3 times: global gold "
                 + "price drivers today, upcoming US data/Fed, and Egypt gold price today. Weigh: Fed/real yields, dollar, "
@@ -146,15 +132,15 @@ public class Analyzer {
         } catch (Exception e) { return null; }
     }
 
-    static JSONObject post(String key, String json) throws Exception {
-        HttpURLConnection c = (HttpURLConnection) new URL("https://api.anthropic.com/v1/messages").openConnection();
+    static JSONObject post(String key, String model, String json) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(
+                "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent").openConnection();
         c.setRequestMethod("POST");
         c.setConnectTimeout(20000);
         c.setReadTimeout(180000);
         c.setDoOutput(true);
-        c.setRequestProperty("x-api-key", key);
-        c.setRequestProperty("anthropic-version", "2023-06-01");
-        c.setRequestProperty("content-type", "application/json");
+        c.setRequestProperty("x-goog-api-key", key);
+        c.setRequestProperty("Content-Type", "application/json");
         OutputStream os = c.getOutputStream();
         os.write(json.getBytes("UTF-8"));
         os.close();

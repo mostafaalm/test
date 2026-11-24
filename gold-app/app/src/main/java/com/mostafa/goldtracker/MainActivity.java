@@ -60,9 +60,9 @@ public class MainActivity extends Activity {
             try {
                 android.content.SharedPreferences sp = getSharedPreferences("alerts", MODE_PRIVATE);
                 String k = sp.getString("apiKey", "");
-                return new JSONObject().put("hasKey", k.startsWith("sk-"))
+                return new JSONObject().put("hasKey", k.length() > 20)
                         .put("keyTail", k.length() > 6 ? k.substring(k.length() - 4) : "")
-                        .put("model", sp.getString("model", "claude-sonnet-5-5"))
+                        .put("model", sp.getString("model", "gemini-3.8-flash"))
                         .put("every", sp.getInt("aiEvery", 4)).toString();
             } catch (Exception e) { return "{}"; }
         }
@@ -70,7 +70,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void saveSettings(String key, String model, int every) {
             android.content.SharedPreferences.Editor ed = getSharedPreferences("alerts", MODE_PRIVATE).edit();
-            if (key != null && key.trim().startsWith("sk-")) ed.putString("apiKey", key.trim());
+            if (key != null && key.trim().length() > 20 && !key.equals("__clear__")) ed.putString("apiKey", key.trim());
             if (key != null && key.equals("__clear__")) ed.remove("apiKey");
             ed.putString("model", model).putInt("aiEvery", every).apply();
         }

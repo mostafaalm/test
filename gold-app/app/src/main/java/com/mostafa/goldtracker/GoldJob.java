@@ -142,7 +142,7 @@ public class GoldJob extends JobService {
                     long amt = r.optLong("amount_egp", 0);
                     if (v.equals("buy") && amt > 0) body += " المقترح: حوالي " + fmt0(amt) + " جنيه.";
                     if (r.optBoolean("breaking")) notify(c, 300, "خبر مهم للدهب", body);
-                    else if (!v.equals(prevVerdict)) notify(c, 301, "تحليل Claude: " + vt, body);
+                    else if (!v.equals(prevVerdict)) notify(c, 301, "تحليل Gemini: " + vt, body);
                 }
             }
         }
