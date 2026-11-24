@@ -38,7 +38,7 @@ public class Analyzer {
         try {
             String key = sp.getString("apiKey", "");
             if (key.length() <= 20) return out.put("error", "مفيش مفتاح API. اكتبه في الإعدادات.");
-            String model = sp.getString("model", "gemini-3.8-flash");
+            String model = sp.getString("model", "gemini-flash-latest");
 
             double p = GoldJob.fetchPrice();
             JSONObject cl = GoldJob.climate(c, p, -1);
@@ -50,10 +50,22 @@ public class Analyzer {
                     .put("parts", new JSONArray().put(new JSONObject().put("text", userMsg(p, cl, profile, sp.getFloat("premium", 1.79f)))))));
             body.put("tools", new JSONArray().put(new JSONObject().put("google_search", new JSONObject())));
 
-            JSONObject resp = post(key, model, body.toString());
-            if (resp.has("error")) {
-                return out.put("error", resp.getJSONObject("error").optString("message", "خطأ من Gemini"));
+            // Try the chosen model first, then free-tier friendly fallbacks.
+            String[] chain = {model, "gemini-flash-latest", "gemini-2.5-flash", "gemini-flash-lite-latest", "gemini-2.5-flash-lite"};
+            JSONObject resp = null;
+            String lastErr = "خطأ من Gemini";
+            java.util.HashSet<String> tried = new java.util.HashSet<>();
+            for (String m : chain) {
+                if (!tried.add(m)) continue;
+                resp = post(key, m, body.toString());
+                if (!resp.has("error")) { model = m; break; }
+                JSONObject err = resp.getJSONObject("error");
+                lastErr = err.optString("message", lastErr);
+                int code = err.optInt("code", 0);
+                if (code != 429 && code != 404 && code != 400) return out.put("error", lastErr);
+                resp = null;
             }
+            if (resp == null) return out.put("error", "كل الموديلات المجانية رفضت دلوقتي. آخر رسالة: " + lastErr);
             JSONArray cands = resp.optJSONArray("candidates");
             if (cands == null || cands.length() == 0) return out.put("error", "Gemini مرجّعش رد. جرّب تاني.");
             JSONObject cand = cands.getJSONObject(0);

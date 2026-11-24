@@ -156,7 +156,7 @@ button.ghost{background:transparent;color:var(--dn);border:1px solid var(--line)
     <p class="empty" style="margin-top:0" id="keyState"></p>
     <form id="sf">
       <label class="full">مفتاح API من aistudio.google.com (مجاني)<input id="sk" type="password" autocomplete="off" placeholder="AIza..."></label>
-      <label>الموديل<select id="sm"><option value="gemini-3.8-flash">Gemini 3.8 Flash (مجاني)</option><option value="gemini-2.5-flash">Gemini 2.5 Flash</option></select></label>
+      <label>الموديل<select id="sm"><option value="gemini-flash-latest">Gemini Flash أحدث نسخة (مجاني)</option><option value="gemini-2.5-flash">Gemini 2.5 Flash</option><option value="gemini-flash-lite-latest">Gemini Flash Lite (أخف)</option><option value="gemini-3.8-flash">Gemini 3.8 Flash</option></select></label>
       <label>تحليل تلقائي كل<select id="se"><option value="0">مقفول</option><option value="2">ساعتين</option><option value="4">4 ساعات</option><option value="8">8 ساعات</option><option value="12">12 ساعة</option></select></label>
       <button class="full" type="submit">احفظ</button>
     </form>
@@ -297,7 +297,7 @@ function renderAI(r){
  $('aiN').textContent=r.next_event?'الحدث الجاي: '+r.next_event:'';
  const sc=$('aiS');sc.textContent='';
  (r.sources||[]).slice(0,6).forEach(x=>{if(typeof x.u==='string'&&x.u.startsWith('https://')){const a=document.createElement('a');a.href=x.u;a.textContent=x.t||'مصدر';sc.appendChild(a)}});
- $('aiT').textContent='آخر تحليل: '+(r.at||'')+(r.price?' · الأونصة وقتها '+fmt(r.price):'')+(r.k21_today?' · عيار 21 '+fmt(r.k21_today):'');
+ $('aiT').textContent='آخر تحليل: '+(r.at||'')+(r.model?' · '+r.model:'')+(r.price?' · الأونصة وقتها '+fmt(r.price):'')+(r.k21_today?' · عيار 21 '+fmt(r.k21_today):'');
 }
 window.__ai=s=>{$('aiBtn').disabled=false;$('aiBtn').textContent='حلّل دلوقتي';try{renderAI(JSON.parse(s))}catch(e){$('aiT').textContent='حصل خطأ'}};
 function loadSettings(){

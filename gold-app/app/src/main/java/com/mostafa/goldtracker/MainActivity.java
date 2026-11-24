@@ -91,7 +91,7 @@ public class MainActivity extends Activity {
                 String k = sp.getString("apiKey", "");
                 return new JSONObject().put("hasKey", k.length() > 20)
                         .put("keyTail", k.length() > 6 ? k.substring(k.length() - 4) : "")
-                        .put("model", sp.getString("model", "gemini-3.8-flash"))
+                        .put("model", sp.getString("model", "gemini-flash-latest"))
                         .put("every", sp.getInt("aiEvery", 4)).toString();
             } catch (Exception e) { return "{}"; }
         }
