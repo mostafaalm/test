@@ -122,6 +122,30 @@ public class GoldJob extends JobService {
             }
         }
         ed.apply();
+
+        // 4) Claude analysis on schedule
+        int every = sp.getInt("aiEvery", 4);
+        if (every > 0 && Analyzer.hasKey(c)) {
+            long lastMs = 0;
+            String prevVerdict = "";
+            try {
+                JSONObject prev = new JSONObject(sp.getString("ai", "{}"));
+                lastMs = prev.optLong("atMs", 0);
+                prevVerdict = prev.optString("verdict", "");
+            } catch (Exception ignored) { }
+            if (now - lastMs >= every * 3600000L - 10 * 60000L) {
+                JSONObject r = Analyzer.run(c);
+                if (!r.has("error")) {
+                    String v = r.optString("verdict");
+                    String vt = v.equals("buy") ? "اشتري" : v.equals("wait") ? "استنى" : "محايد";
+                    String body = r.optString("headline");
+                    long amt = r.optLong("amount_egp", 0);
+                    if (v.equals("buy") && amt > 0) body += " المقترح: حوالي " + fmt0(amt) + " جنيه.";
+                    if (r.optBoolean("breaking")) notify(c, 300, "خبر مهم للدهب", body);
+                    else if (!v.equals(prevVerdict)) notify(c, 301, "تحليل Claude: " + vt, body);
+                }
+            }
+        }
     }
 
     /** Seed points (real closes/lows from news reports) so the indicator works from day one. */

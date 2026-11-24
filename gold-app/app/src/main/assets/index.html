@@ -96,7 +96,20 @@ button.ghost{background:transparent;color:var(--dn);border:1px solid var(--line)
     <button id="rf" type="button" style="margin-top:12px;background:#1d1a12;color:#fff">تحديث دلوقتي</button>
   </header>
 
-  <h2>توصية النهارده</h2>
+  <h2>تحليل Claude</h2>
+  <div class="card" id="aiCard">
+    <span class="badge lv-neutral" id="aiV">—</span>
+    <div class="rec" id="aiAmt" style="font-size:clamp(22px,6vw,30px)"></div>
+    <p style="margin:0" id="aiH">لسه مفيش تحليل. دوس الزرار تحت.</p>
+    <ul class="why" id="aiR"></ul>
+    <div id="aiK"></div>
+    <p class="empty" id="aiN" style="margin:10px 0 0"></p>
+    <div class="src" id="aiS" style="margin-top:8px"></div>
+    <p class="empty" id="aiT" style="margin:8px 0 0;font-size:13px"></p>
+    <button type="button" id="aiBtn" style="margin-top:12px">حلّل دلوقتي</button>
+  </div>
+
+  <h2>المؤشر الآلي</h2>
   <div class="card">
     <span class="badge lv-neutral" id="lvl">—</span>
     <div class="rec" id="rec">—</div>
@@ -136,11 +149,23 @@ button.ghost{background:transparent;color:var(--dn);border:1px solid var(--line)
   <h2>ظبط على سعر الصاغة</h2>
   <div class="card"><p class="empty" style="margin-top:0">الدهب في مصر بيتسعّر على دولار الصاغة. اكتب سعر عيار 21 اللي شايفه أو دولار الصاغة، والتطبيق يحسب الفرق ويستخدمه.</p><p id="prem" style="margin:0 0 10px;font-weight:600"></p><form id="kf"><label>عيار 21 دلوقتي (جنيه)<input id="kv" type="number" inputmode="decimal" min="0"></label><label>أو دولار الصاغة<input id="gv" type="number" step="0.01" inputmode="decimal" min="0"></label><button class="full" type="submit">احسب الفرق واحفظ</button></form></div>
 
+  <h2>إعدادات Claude</h2>
+  <div class="card">
+    <p class="empty" style="margin-top:0" id="keyState"></p>
+    <form id="sf">
+      <label class="full">مفتاح API من console.anthropic.com<input id="sk" type="password" autocomplete="off" placeholder="sk-ant-..."></label>
+      <label>الموديل<select id="sm"><option value="claude-sonnet-5-5">Sonnet 5.5 (أرخص وسريع)</option><option value="claude-opus-5-5">Opus 5.5 (أقوى وأغلى)</option></select></label>
+      <label>تحليل تلقائي كل<select id="se"><option value="0">مقفول</option><option value="2">ساعتين</option><option value="4">4 ساعات</option><option value="8">8 ساعات</option><option value="12">12 ساعة</option></select></label>
+      <button class="full" type="submit">احفظ</button>
+    </form>
+    <button type="button" class="ghost" id="skc" style="margin-top:10px">امسح المفتاح</button>
+  </div>
+
   <h2>الأخبار والتحليل</h2>
   <div class="card"><a href="https://claude.ai/artifact/BoARqMvvjVbC2on7c5Gi8d" style="color:var(--goldd);font-weight:600">افتح صفحة الأخبار والتحليل اليومي</a></div>
 
   <p class="foot"><b>الإشعارات شغالة في الخلفية:</b> التطبيق بيفحص الأونصة كل حوالي 15 دقيقة، ويبعتلك لو جو السوق اتغير، أو السعر اتحرك 1% أو أكتر، وقبل وبعد الأخبار الأمريكية الكبيرة (PCE، الوظائف، الفيدرالي، CPI).</p>
-  <p class="foot">التوصيات قواعد آلية مبنية على حركة السعر ومواعيد الأخبار وملفك، مش نصيحة استثمارية مرخصة. الأونصة من gold-api.com والدولار من open.er-api.com.</p>
+  <p class="foot">تحليل Claude بيقرا الأخبار من Kitco وReuters وInvesting.com وFXStreet ومصادر موثوقة تانية، وبيتحاسب على حسابك في Anthropic. المؤشر الآلي قواعد مبنية على حركة السعر ومواعيد الأخبار وملفك، مش نصيحة استثمارية مرخصة. الأونصة من gold-api.com والدولار من open.er-api.com.</p>
 </div>
 <script>
 {
@@ -255,6 +280,35 @@ $('kf').addEventListener('submit',e=>{e.preventDefault();const k=Number($('kv').
  if(G&&M.fx){premium=Math.round((G-M.fx)*100)/100;premAt=new Date().toLocaleDateString('ar-EG',{day:'numeric',month:'long'});store.set('premium',premium);store.set('premAt',premAt);$('kv').value='';$('gv').value='';loadClimate()}
  render()});
 $('rf').addEventListener('click',refresh);
+
+const VT={buy:'اشتري',wait:'استنى',neutral:'محايد'},VC={buy:'good',wait:'wait',neutral:'neutral'},CF={low:'ثقة منخفضة',medium:'ثقة متوسطة',high:'ثقة عالية'};
+function renderAI(r){
+ if(!r)return;
+ if(r.error){$('aiT').textContent=r.error;return}
+ const b=$('aiV');b.textContent=(VT[r.verdict]||'—')+(r.confidence?' · '+(CF[r.confidence]||''):'');b.className='badge lv-'+(VC[r.verdict]||'neutral');
+ $('aiAmt').textContent=r.verdict==='buy'&&Number(r.amount_egp)>0?'اشتري بحوالي '+fmt(r.amount_egp)+' جنيه':'';
+ $('aiH').textContent=r.headline||'';
+ const ul=$('aiR');ul.textContent='';
+ (r.reasons||[]).forEach(t=>{const li=document.createElement('li');li.className='p';li.textContent=t;ul.appendChild(li)});
+ (r.risks||[]).forEach(t=>{const li=document.createElement('li');li.className='m';li.textContent=t;ul.appendChild(li)});
+ $('aiK').textContent='';
+ $('aiN').textContent=r.next_event?'الحدث الجاي: '+r.next_event:'';
+ const sc=$('aiS');sc.textContent='';
+ (r.sources||[]).slice(0,6).forEach(x=>{if(typeof x.u==='string'&&x.u.startsWith('https://')){const a=document.createElement('a');a.href=x.u;a.textContent=x.t||'مصدر';sc.appendChild(a)}});
+ $('aiT').textContent='آخر تحليل: '+(r.at||'')+(r.price?' · الأونصة وقتها '+fmt(r.price):'')+(r.k21_today?' · عيار 21 '+fmt(r.k21_today):'');
+}
+window.__ai=s=>{$('aiBtn').disabled=false;$('aiBtn').textContent='حلّل دلوقتي';try{renderAI(JSON.parse(s))}catch(e){$('aiT').textContent='حصل خطأ'}};
+function loadSettings(){
+ let st={};try{st=JSON.parse(Native.settings())}catch(e){}
+ $('keyState').textContent=st.hasKey?'المفتاح محفوظ (آخره …'+st.keyTail+'). سيب الخانة فاضية لو مش عايز تغيّره.':'مفيش مفتاح لسه. اعمله من console.anthropic.com واكتبه هنا. هيفضل على موبايلك بس.';
+ if(st.model)$('sm').value=st.model;if(st.every!=null)$('se').value=String(st.every);
+ $('aiBtn').disabled=!st.hasKey;
+ try{const r=Native.aiResult();if(r)renderAI(JSON.parse(r))}catch(e){}
+}
+$('sf').addEventListener('submit',e=>{e.preventDefault();try{Native.saveSettings($('sk').value,$('sm').value,Number($('se').value))}catch(x){}$('sk').value='';loadSettings()});
+$('skc').addEventListener('click',()=>{try{Native.saveSettings('__clear__',$('sm').value,Number($('se').value))}catch(x){}loadSettings()});
+$('aiBtn').addEventListener('click',()=>{$('aiBtn').disabled=true;$('aiBtn').textContent='Claude بيقرا الأخبار… (ممكن ياخد دقيقة)';$('aiT').textContent='';try{Native.analyze()}catch(e){window.__ai(JSON.stringify({error:'التحليل متاح في التطبيق بس'}))}});
+if(window.Native&&Native.settings)loadSettings();else $('keyState').textContent='الإعدادات متاحة في التطبيق بس.';
 fillProfile();syncNative();loadClimate();render();refresh();setInterval(refresh,60000);
 }
 </script>

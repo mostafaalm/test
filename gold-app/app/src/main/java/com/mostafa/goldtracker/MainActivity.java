@@ -56,6 +56,39 @@ public class MainActivity extends Activity {
     /** Native HTTPS GET so the page is not limited by CORS. Only https URLs. */
     class Bridge {
         @JavascriptInterface
+        public String settings() {
+            try {
+                android.content.SharedPreferences sp = getSharedPreferences("alerts", MODE_PRIVATE);
+                String k = sp.getString("apiKey", "");
+                return new JSONObject().put("hasKey", k.startsWith("sk-"))
+                        .put("keyTail", k.length() > 6 ? k.substring(k.length() - 4) : "")
+                        .put("model", sp.getString("model", "claude-sonnet-5-5"))
+                        .put("every", sp.getInt("aiEvery", 4)).toString();
+            } catch (Exception e) { return "{}"; }
+        }
+
+        @JavascriptInterface
+        public void saveSettings(String key, String model, int every) {
+            android.content.SharedPreferences.Editor ed = getSharedPreferences("alerts", MODE_PRIVATE).edit();
+            if (key != null && key.trim().startsWith("sk-")) ed.putString("apiKey", key.trim());
+            if (key != null && key.equals("__clear__")) ed.remove("apiKey");
+            ed.putString("model", model).putInt("aiEvery", every).apply();
+        }
+
+        @JavascriptInterface
+        public String aiResult() {
+            return getSharedPreferences("alerts", MODE_PRIVATE).getString("ai", "");
+        }
+
+        @JavascriptInterface
+        public void analyze() {
+            new Thread(() -> {
+                final String r = Analyzer.run(MainActivity.this).toString();
+                runOnUiThread(() -> web.evaluateJavascript("window.__ai(" + JSONObject.quote(r) + ")", null));
+            }).start();
+        }
+
+        @JavascriptInterface
         public void saveProfile(String json) {
             getSharedPreferences("alerts", MODE_PRIVATE).edit().putString("profile", json).apply();
         }
