@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>متابعة الدهب</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE money tool, calm and exact
+   IDEA the price board in a gold dealer's window: one big number, a ruler of levels
+   PICTURE a horizontal price ruler with today's pointer and the plan's buy levels
+   COLOUR bullion yellow field, deep ink, red/green for moves
+   TYPE Reem Kufi display + IBM Plex Sans Arabic
+   LAYOUT phone first: price board, ruler, next step, plan, purchases, news */
+:root{color-scheme:light dark;--bg:light-dark(#fbf8f0,#15130d);--ink:light-dark(#1d1a12,#f3eedf);--mut:light-dark(#6b6352,#a99f88);--gold:light-dark(#e8c547,#c9a227);--goldd:light-dark(#8a6a00,#e8c547);--card:light-dark(#ffffff,#1f1c14);--line:light-dark(#e6dfcc,#353022);--up:light-dark(#0f7a3d,#4fd18a);--dn:light-dark(#c0261c,#ff6b5e)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 "IBM Plex Sans Arabic",system-ui,sans-serif;overflow-x:clip}
+.wrap{max-width:620px;margin:0 auto;padding:0 16px 40px}
+.board{background:var(--gold);color:#1d1a12;padding:20px 18px 18px;margin:0 -16px;border-radius:0 0 22px 22px}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+h1{font:700 26px/1.1 "Reem Kufi",sans-serif;margin:0}
+.upd{font-size:13px;opacity:.75}
+.price{font:700 clamp(44px,13vw,64px)/1 "Reem Kufi",sans-serif;margin:14px 0 2px;direction:ltr;text-align:right;letter-spacing:-.02em}
+.sub{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:15px}
+.chg{font-weight:600;padding:2px 10px;border-radius:99px;background:#1d1a12;color:#fff;direction:ltr}
+.k21{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:16px}
+.k21 div{background:rgba(255,255,255,.55);border-radius:12px;padding:8px 10px}
+.k21 b{display:block;font:700 19px "Reem Kufi",sans-serif;white-space:nowrap}
+.k21 span{font-size:13px}
+h2{font:700 20px/1.2 "Reem Kufi",sans-serif;margin:28px 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.next{border-inline-start:6px solid var(--goldd)}
+.next b{font-size:18px;display:block;margin-bottom:4px}
+.next p{margin:0;color:var(--mut)}
+.note{margin-top:10px;font-size:15px}
+.ruler{position:relative;height:96px;margin-top:4px}
+.track{position:absolute;inset-inline:0;top:44px;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--dn),var(--gold) 55%,var(--up))}
+.mk{position:absolute;top:30px;width:2px;height:38px;background:var(--ink);transform:translateX(50%)}
+.mk i{position:absolute;top:40px;right:50%;transform:translateX(50%);font-style:normal;font-size:13px;white-space:nowrap;color:var(--mut)}
+.mk.buy{background:var(--goldd)}.mk.buy i{color:var(--goldd);font-weight:600}
+.ptr{position:absolute;top:0;transform:translateX(50%);text-align:center;transition:right .6s}
+.ptr span{display:block;font-weight:600;font-size:14px;white-space:nowrap;direction:ltr}
+.ptr em{display:block;width:0;height:0;margin:2px auto 0;border:8px solid transparent;border-top-color:var(--ink)}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.steps li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.num{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:700 18px "Reem Kufi";background:var(--line)}
+.steps small{display:block;color:var(--mut);font-size:13px}
+.tag{font-size:13px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap;background:var(--line)}
+.done .num,.tag.done{background:var(--up);color:#fff}
+.due .num,.tag.due{background:var(--goldd);color:var(--card)}
+.sum{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.sum div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.sum b{display:block;font:700 20px "Reem Kufi";white-space:nowrap}
+.sum span{font-size:13px;color:var(--mut)}
+form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+label{font-size:13px;color:var(--mut);display:grid;gap:4px}
+input,select,button{font:inherit;font-size:16px;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:0 10px;width:100%}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid var(--goldd);outline-offset:1px}
+button{background:var(--ink);color:var(--bg);border:0;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;color:var(--dn);border:1px solid var(--line);min-height:36px;width:auto;font-size:14px}
+.full{grid-column:1/-1}
+.list{display:grid;gap:6px;margin-top:12px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
+.news li{margin-bottom:8px}
+.src a{color:var(--goldd);font-size:14px;display:inline-block;margin-inline-end:12px}
+.empty{color:var(--mut);font-size:15px}
+.foot{font-size:13px;color:var(--mut);margin-top:24px}
+.up{color:var(--up)}.dn{color:var(--dn)}
+@media(prefers-reduced-motion:reduce){.ptr{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="board">
+    <div class="top"><h1>متابعة الدهب</h1><span class="upd" id="upd">بيحمّل…</span></div>
+    <div class="price" id="oz">—</div>
+    <div class="sub"><span>دولار للأونصة</span><span class="chg" id="chg">—</span></div>
+    <div class="k21">
+      <div><span>عيار 21 تقديري</span><b id="k21s">—</b></div>
+      <div><span>عيار 24 تقديري</span><b id="k24">—</b></div>
+      <div><span>الدولار</span><b id="fx">—</b></div>
+    </div>
+    <button id="rf" type="button" style="margin-top:12px;background:#1d1a12;color:#fff">تحديث دلوقتي</button>
+  </header>
+
+  <h2>الخطوة الجاية</h2>
+  <div class="card next"><b id="nextT">—</b><p id="nextD"></p><div class="note" id="note"></div></div>
+
+  <h2>السعر على مسطرة الخطة</h2>
+  <div class="card"><div class="ruler" id="ruler"></div></div>
+
+  <h2>خطة الدفعات</h2>
+  <ul class="steps" id="steps"></ul>
+
+  <h2>مشترياتي</h2>
+  <div class="sum" id="sum"></div>
+  <div class="card">
+    <form id="f">
+      <label>التاريخ<input id="fd" type="date" required></label>
+      <label>النوع<select id="ft"><option value="21">عيار 21 / جنيه</option><option value="24">سبيكة 24</option><option value="fund">صندوق دهب</option></select></label>
+      <label>الجرامات<input id="fg" type="number" step="0.01" min="0" inputmode="decimal" required></label>
+      <label>سعر الجرام (جنيه)<input id="fp" type="number" step="1" min="0" inputmode="decimal" required></label>
+      <label class="full">رقم الدفعة<select id="fn"><option value="1">الأولى</option><option value="2">التانية</option><option value="3">التالتة</option><option value="4">الرابعة</option><option value="0">خارج الخطة</option></select></label>
+      <button class="full" type="submit" id="fb">سجّل الشراء</button>
+    </form>
+    <div class="list" id="plist"></div>
+  </div>
+
+  <h2>سعر الصاغة الفعلي</h2>
+  <div class="card"><p class="empty" style="margin-top:0">السعر التقديري محسوب من الأونصة والدولار، وبيفرق عن الصاغة. لو عرفت السعر الفعلي اكتبه هنا والحسابات تمشي عليه.</p><form id="kf"><label>عيار 21 شراء من الصاغة (جنيه)<input id="kv" type="number" inputmode="decimal" min="0"></label><label>&nbsp;<button type="submit">احفظ</button></label></form></div>
+
+  <h2>الأخبار والتحليل</h2>
+  <div class="card"><p class="empty" style="margin-top:0">الأخبار وتحليلها والإشعارات بيتحدّثوا مرتين في اليوم في صفحة Claude.</p><a class="src" href="https://claude.ai/artifact/BoARqMvvjVbC2on7c5Gi8d" style="color:var(--goldd);font-weight:600">افتح صفحة الأخبار والتحليل</a></div>
+
+  <p class="foot">الأونصة من gold-api.com والدولار من open.er-api.com، وبيتحدّثوا كل دقيقة والتطبيق مفتوح. الإشارات دي تنفيذ لخطة الدفعات بتاعتك، مش نصيحة استثمارية.</p>
+</div>
+<script>
+{
+const $=id=>document.getElementById(id);
+const fmt=(n,d=0)=>n==null||isNaN(n)?'—':Number(n).toLocaleString('en-US',{maximumFractionDigits:d,minimumFractionDigits:d});
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const PCE=new Date('2026-11-25T16:00:00+02:00'),FED=new Date('2026-12-10T00:00:00+02:00');
+const PLAN=[
+ {n:1,t:'بعد رقم التضخم PCE',c:'25 نوفمبر، أيًا كانت النتيجة',due:m=>Date.now()>=PCE},
+ {n:2,t:'لو الأونصة قربت من 3,500',c:'الأونصة ≤ 3,500 دولار',lvl:3500,due:m=>m.ounce&&m.ounce<=3500},
+ {n:3,t:'لو الأونصة نزلت قرب 3,400',c:'الأونصة ≤ 3,400 دولار',lvl:3400,due:m=>m.ounce&&m.ounce<=3400},
+ {n:4,t:'بعد اجتماع الفيدرالي',c:'بعد 9 ديسمبر، مهما كان السعر',due:m=>Date.now()>=FED}
+];
+let M=store.get('market',{}),P=store.get('purchases',[]);
+let manual=store.get('k21manual',null);
+
+const cbs={};let seq=0;
+window.__cb=(id,body)=>{const f=cbs[id];delete cbs[id];if(f)f(body)};
+function get(url){return new Promise(res=>{
+ if(window.Native&&Native.get){const id='r'+(++seq);cbs[id]=res;Native.get(id,url);setTimeout(()=>{if(cbs[id]){delete cbs[id];res(null)}},15000)}
+ else fetch(url).then(r=>r.text()).then(res,()=>res(null));
+})}
+const k21Est=()=>M.ounce&&M.fx?M.ounce/31.1035*0.875*M.fx:null;
+const k21Val=()=>manual||k21Est();
+
+async function refresh(){
+ $('upd').textContent='بيحدّث…';
+ const [g,f]=await Promise.all([get('https://api.gold-api.com/price/XAU'),get('https://open.er-api.com/v6/latest/USD')]);
+ let ok=false;
+ try{const j=JSON.parse(g);if(j&&j.price){M.ounce=Number(j.price);ok=true}}catch(e){}
+ try{const j=JSON.parse(f);if(j&&j.rates&&j.rates.EGP)M.fx=Number(j.rates.EGP)}catch(e){}
+ const day=new Date().toISOString().slice(0,10);
+ if(ok){if(M.day!==day){M.day=day;M.open=M.ounce}M.time=new Date().toLocaleTimeString('ar-EG',{hour:'numeric',minute:'2-digit'});store.set('market',M)}
+ $('upd').textContent=ok?'آخر تحديث: '+M.time:(M.time?'مفيش نت، آخر سعر: '+M.time:'مفيش اتصال');
+ all();
+}
+
+function renderMarket(){
+ $('oz').textContent=fmt(M.ounce,2);
+ const c=M.open?(M.ounce-M.open)/M.open*100:null;
+ $('chg').textContent=c==null?'—':(c>0?'+':'')+fmt(c,2)+'% النهارده';
+ $('chg').style.background=c==null?'#1d1a12':c>=0?'var(--up)':'var(--dn)';
+ $('k21s').textContent=fmt(k21Est());$('k24').textContent=fmt(M.ounce&&M.fx?M.ounce/31.1035*M.fx:null);$('fx').textContent=fmt(M.fx,2);
+ if(manual)$('kv').value=manual;
+}
+
+function renderRuler(){
+ const r=$('ruler');r.innerHTML='<div class="track"></div>';
+ const lo=3300,hi=3800,pos=v=>Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100));
+ [{v:3400,buy:1,l:'دفعة 3'},{v:3500,buy:1,l:'دفعة 2'},{v:3600,l:'3,600'},{v:3700,l:'3,700'}].forEach(k=>{const d=document.createElement('div');d.className='mk'+(k.buy?' buy':'');d.style.right=pos(k.v)+'%';const i=document.createElement('i');i.textContent=k.l;d.appendChild(i);r.appendChild(d)});
+ if(M.ounce){const p=document.createElement('div');p.className='ptr';p.style.right=pos(M.ounce)+'%';const s=document.createElement('span');s.textContent=fmt(M.ounce,0);p.appendChild(s);p.appendChild(document.createElement('em'));r.appendChild(p)}
+}
+
+function renderPlan(){
+ const bought=new Set(P.map(p=>Number(p.tranche)));
+ const ul=$('steps');ul.textContent='';let next=null;
+ PLAN.forEach(s=>{
+  const done=bought.has(s.n),due=!done&&s.due(M);
+  if(due&&!next)next=s;
+  const li=document.createElement('li');li.className=done?'done':due?'due':'';
+  li.innerHTML='<span class="num"></span><div><span class="t"></span><small></small></div><span class="tag"></span>';
+  li.querySelector('.num').textContent=s.n;li.querySelector('.t').textContent=s.t;li.querySelector('small').textContent=s.c;
+  const tg=li.querySelector('.tag');tg.textContent=done?'اتنفذت':due?'وقتها جه':'مستنية';tg.className='tag'+(done?' done':due?' due':'');
+  ul.appendChild(li);
+ });
+ const names=['','الأولى','التانية','التالتة','الرابعة'];
+ if(next){$('nextT').textContent='الدفعة '+names[next.n]+' وقتها جه';$('nextD').textContent=next.c+'. اشتري ربع المبلغ وسجّل الشراء تحت.'}
+ else{
+  const pend=PLAN.filter(s=>!bought.has(s.n));
+  if(!pend.length){$('nextT').textContent='الخطة اكتملت';$('nextD').textContent='كل الدفعات اتنفذت.'}
+  else{const lv=pend.find(s=>s.lvl);$('nextT').textContent='مفيش دفعة مستحقة دلوقتي';
+   let d='استنى. ';
+   if(Date.now()<PCE)d+='أقرب حدث رقم التضخم PCE يوم الأربعاء 25 نوفمبر.';
+   else if(lv&&M.ounce)d+='الأونصة على بعد '+fmt(M.ounce-lv.lvl,0)+' دولار من مستوى الدفعة '+names[lv.n]+'.';
+   else d+='الدفعة الرابعة بعد اجتماع الفيدرالي 9 ديسمبر.';
+   $('nextD').textContent=d}
+ }
+ $('note').textContent=manual?'الحسابات ماشية على سعر الصاغة اللي إنت كتبته.':'الحسابات ماشية على سعر عيار 21 التقديري.';
+}
+
+function renderBuys(){
+ const k21=k21Val();let g21=0,cost=0;
+ P.forEach(p=>{const g=Number(p.grams)||0;cost+=g*(Number(p.price)||0);g21+=p.kind==='24'?g*24/21:g});
+ const val=k21?g21*k21:null,pl=val!=null&&P.length?val-cost:null;
+ const items=[['إجمالي التكلفة',fmt(cost)+' ج'],['القيمة الحالية',val==null?'—':fmt(val)+' ج'],['ربح / خسارة',pl==null?'—':(pl>=0?'+':'')+fmt(pl)+' ج'],['جرامات (مكافئ 21)',fmt(g21,2)]];
+ const s=$('sum');s.textContent='';
+ items.forEach(([a,b],i)=>{const d=document.createElement('div');const bb=document.createElement('b');bb.textContent=b;if(i===2&&pl!=null)bb.className=pl>=0?'up':'dn';const sp=document.createElement('span');sp.textContent=a;d.appendChild(bb);d.appendChild(sp);s.appendChild(d)});
+ const l=$('plist');l.textContent='';
+ if(!P.length){const e=document.createElement('p');e.className='empty';e.textContent='لسه مفيش مشتريات. أول ما تشتري سجّلها هنا.';l.appendChild(e)}
+ P.forEach((p,idx)=>{
+  const r=document.createElement('div');r.className='row';const t=document.createElement('span');
+  const kind=p.kind==='24'?'سبيكة 24':p.kind==='fund'?'صندوق':'عيار 21';
+  t.textContent=p.date+' · '+kind+' · '+fmt(p.grams,2)+' جم × '+fmt(p.price)+(Number(p.tranche)?' · دفعة '+p.tranche:'');
+  const b=document.createElement('button');b.className='ghost';b.type='button';b.textContent=b.dataset.c?'متأكد؟':'حذف';
+  b.onclick=()=>{if(!b.dataset.c){b.dataset.c=1;b.textContent='متأكد؟';return}P.splice(idx,1);store.set('purchases',P);renderPlan();renderBuys()};
+  r.appendChild(t);r.appendChild(b);l.appendChild(r);
+ });
+}
+
+function all(){renderMarket();renderRuler();renderPlan();renderBuys()}
+$('fd').value=new Date().toISOString().slice(0,10);
+$('f').addEventListener('submit',e=>{e.preventDefault();
+ P.push({date:$('fd').value,kind:$('ft').value,grams:Number($('fg').value),price:Number($('fp').value),tranche:Number($('fn').value)});
+ store.set('purchases',P);$('fg').value='';$('fp').value='';renderPlan();renderBuys()});
+$('kf').addEventListener('submit',e=>{e.preventDefault();const v=Number($('kv').value);manual=v>0?v:null;store.set('k21manual',manual);all()});
+$('rf').addEventListener('click',refresh);
+all();refresh();setInterval(refresh,60000);
+}
+</script>
+</body>
+</html>
